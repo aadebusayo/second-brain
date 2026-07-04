@@ -4,7 +4,6 @@ src/secondbrain/__init__.py
 src/secondbrain/activation.py
 src/secondbrain/api.py
 src/secondbrain/assemble.py
-src/secondbrain/cli.py
 src/secondbrain/clusters.py
 src/secondbrain/config.py
 src/secondbrain/consolidate.py
@@ -19,7 +18,6 @@ src/secondbrain/weights.py
 src/secondbrain.egg-info/PKG-INFO
 src/secondbrain.egg-info/SOURCES.txt
 src/secondbrain.egg-info/dependency_links.txt
-src/secondbrain.egg-info/entry_points.txt
 src/secondbrain.egg-info/requires.txt
 src/secondbrain.egg-info/top_level.txt
 src/secondbrain/embeddings/__init__.py
@@ -32,7 +30,6 @@ src/secondbrain/vectors/base.py
 src/secondbrain/vectors/inmemory.py
 src/secondbrain/vectors/lancedb.py
 tests/test_activation.py
-tests/test_cli.py
 tests/test_consolidate.py
 tests/test_enterprise_readiness.py
 tests/test_eval_harness.py

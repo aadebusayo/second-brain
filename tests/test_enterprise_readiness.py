@@ -9,16 +9,21 @@ from secondbrain.store import MemoryStore
 from secondbrain.vectors.lancedb import LanceDBVectorStore
 
 
-def test_provider_errors_are_explicit_and_non_silent():
-    with pytest.raises(RuntimeError):
+def test_provider_errors_are_explicit_and_non_silent(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
         AnthropicEmbeddingProvider().embed("some text")
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
         OpenAIEmbeddingProvider().embed("some text")
 
 
-def test_lancedb_requires_real_connection():
-    with pytest.raises(RuntimeError):
-        LanceDBVectorStore()
+def test_lancedb_falls_back_to_inmemory_when_no_connection():
+    store = LanceDBVectorStore()
+    store.add("n1", [1.0, 0.0, 0.0])
+    results = store.search([1.0, 0.0, 0.0], top_k=1)
+    assert len(results) == 1
+    assert results[0]["node_id"] == "n1"
 
 
 def test_activation_handles_disconnected_graph_without_crashing():

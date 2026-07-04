@@ -33,6 +33,10 @@ class MemoryGraph:
     def add_edge(self, source_id: str, target_id: str, weight: float = 0.0) -> None:
         self._graph.add_edge(source_id, target_id, weight=float(weight))
 
+    def remove_edge(self, source_id: str, target_id: str) -> None:
+        if self._graph.has_edge(source_id, target_id):
+            self._graph.remove_edge(source_id, target_id)
+
     def get_edge_weight(self, source_id: str, target_id: str) -> float:
         return self._graph[source_id][target_id].get("weight", 0.0)
 

@@ -4,6 +4,7 @@ import time
 from typing import List, Optional
 import numpy as np
 
+from .activation import cosine_similarity
 from .config import Settings
 from .embeddings.anthropic import AnthropicEmbeddingProvider
 from .embeddings.local import LocalEmbeddingProvider
@@ -60,7 +61,7 @@ class MemoryStore:
         for node in self.graph.list_nodes():
             if not node.embedding:
                 continue
-            score = self._cosine_similarity(query_vector, np.asarray(node.embedding, dtype=float))
+            score = cosine_similarity(query_vector, np.asarray(node.embedding, dtype=float))
             results.append((score, node))
         results.sort(key=lambda item: item[0], reverse=True)
         ranked = [node for _, node in results[:top_k]]
@@ -92,26 +93,4 @@ class MemoryStore:
             "graph_nodes": self.graph.node_count(),
         }
 
-    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
-        if a.size == 0 or b.size == 0:
-            return 0.0
-        a = self._normalize_vector(np.asarray(a, dtype=float))
-        b = self._normalize_vector(np.asarray(b, dtype=float))
-        denom = np.linalg.norm(a) * np.linalg.norm(b)
-        if denom == 0:
-            return 0.0
-        return float(np.dot(a, b) / denom)
 
-    @staticmethod
-    def _normalize_vector(vector: np.ndarray) -> np.ndarray:
-        vector = np.asarray(vector, dtype=float)
-        if vector.size == 0:
-            return vector
-        if vector.size != 16:
-            padded = np.zeros(16, dtype=float)
-            padded[: min(vector.size, 16)] = vector[: min(vector.size, 16)]
-            vector = padded
-        norm = np.linalg.norm(vector)
-        if norm == 0:
-            return vector
-        return vector / norm

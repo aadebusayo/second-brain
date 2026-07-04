@@ -19,6 +19,9 @@ Requires-Dist: sqlmodel
 Requires-Dist: sqlalchemy
 Requires-Dist: lancedb
 Requires-Dist: sentence-transformers
+Requires-Dist: python-igraph
+Requires-Dist: leidenalg
+Requires-Dist: apscheduler
 Provides-Extra: server
 Requires-Dist: anthropic; extra == "server"
 Requires-Dist: openai; extra == "server"

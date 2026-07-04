@@ -4,6 +4,9 @@ sqlmodel
 sqlalchemy
 lancedb
 sentence-transformers
+python-igraph
+leidenalg
+apscheduler
 
 [server]
 anthropic

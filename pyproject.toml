@@ -23,7 +23,10 @@ dependencies = [
   "sqlmodel",
   "sqlalchemy",
   "lancedb",
-  "sentence-transformers"
+  "sentence-transformers",
+  "python-igraph",
+  "leidenalg",
+  "apscheduler",
 ]
 
 [project.urls]
@@ -32,9 +35,6 @@ Homepage = "https://github.com/aadebusayo/second-brain"
 
 [project.optional-dependencies]
 server = ["anthropic", "openai", "mcp"]
-
-[project.scripts]
-secondbrain = "secondbrain.cli:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
