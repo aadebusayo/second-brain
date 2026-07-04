@@ -1,0 +1,11 @@
+numpy
+networkx
+sqlmodel
+sqlalchemy
+lancedb
+sentence-transformers
+
+[server]
+anthropic
+openai
+mcp

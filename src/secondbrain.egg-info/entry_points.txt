@@ -1,0 +1,2 @@
+[console_scripts]
+secondbrain = secondbrain.cli:main
