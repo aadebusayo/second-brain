@@ -2,14 +2,13 @@ Metadata-Version: 2.4
 Name: secondbrain
 Version: 0.1.0a1
 Summary: Graph-based associative memory for LLM agents
-Author: Adewunmi
-License: MIT
-Project-URL: Repository, https://github.com/yourusername/second-brain
-Project-URL: Homepage, https://github.com/yourusername/second-brain
+Author: aadebusayo
+License-Expression: MIT
+Project-URL: Repository, https://github.com/aadebusayo/second-brain
+Project-URL: Homepage, https://github.com/aadebusayo/second-brain
 Keywords: memory,llm,graph,ai,retrieval
 Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Developers
-Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python :: 3
 Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
 Requires-Python: >=3.10

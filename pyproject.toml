@@ -8,13 +8,12 @@ version = "0.1.0a1"
 description = "Graph-based associative memory for LLM agents"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
-authors = [{ name = "Adewunmi" }]
+license = "MIT"
+authors = [{ name = "aadebusayo" }]
 keywords = ["memory", "llm", "graph", "ai", "retrieval"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Topic :: Scientific/Engineering :: Artificial Intelligence"
 ]
@@ -28,8 +27,8 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/yourusername/second-brain"
-Homepage = "https://github.com/yourusername/second-brain"
+Repository = "https://github.com/aadebusayo/second-brain"
+Homepage = "https://github.com/aadebusayo/second-brain"
 
 [project.optional-dependencies]
 server = ["anthropic", "openai", "mcp"]
