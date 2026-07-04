@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import mcp.types as types
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
@@ -22,39 +23,88 @@ def create_server(brain: SecondBrain | None = None) -> Server:
 
     server = Server("secondbrain")
 
-    @server.tool()
-    async def remember(text: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Store a new memory note in the associative graph."""
-        node_id = brain.remember(text, metadata=metadata)
-        return {"node_id": node_id, "status": "remembered"}
-
-    @server.tool()
-    async def recall(query: str, token_budget: int = 2000) -> list[dict[str, Any]]:
-        """Retrieve relevant memories using spreading activation."""
-        nodes = brain.recall(query, token_budget=token_budget)
+    @server.list_tools()
+    async def handle_list_tools() -> list[types.Tool]:
         return [
-            {"node_id": node.id, "text": node.text, "activation": node.base_activation}
-            for node in nodes
+            types.Tool(
+                name="remember",
+                description="Store a new memory note in the associative graph",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "The text to remember"},
+                        "metadata": {"type": "object", "description": "Optional metadata"},
+                    },
+                    "required": ["text"],
+                },
+            ),
+            types.Tool(
+                name="recall",
+                description="Retrieve relevant memories using spreading activation",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "The search query"},
+                        "token_budget": {"type": "integer", "description": "Max tokens for results"},
+                    },
+                    "required": ["query"],
+                },
+            ),
+            types.Tool(
+                name="explain",
+                description="Return the activation math that surfaced a node",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "node_id": {"type": "string", "description": "The node ID to explain"},
+                    },
+                    "required": ["node_id"],
+                },
+            ),
+            types.Tool(
+                name="consolidate",
+                description="Run a memory consolidation pass",
+                inputSchema={"type": "object", "properties": {}},
+            ),
         ]
 
-    @server.tool()
-    async def explain(node_id: str) -> dict[str, Any]:
-        """Return the full activation math that surfaced a node — seed value,
-        hop-by-hop contributions, base-level bonus, and final score."""
-        return brain.explain(node_id)
+    @server.call_tool()
+    async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
+        if name == "remember":
+            node_id = brain.remember(
+                arguments.get("text", ""),
+                metadata=arguments.get("metadata"),
+            )
+            return [types.TextContent(type="text", text=str(node_id))]
 
-    @server.tool()
-    async def consolidate() -> dict[str, Any]:
-        """Run a consolidation pass: find dense subgraphs, summarise,
-        rewire, and demote originals."""
-        report = brain.consolidate()
-        return {
-            "status": "ok",
-            "candidates_found": report.candidates_found,
-            "summaries_created": report.summaries_created,
-            "edges_rewired": report.edges_rewired,
-            "nodes_demoted": report.nodes_demoted,
-        }
+        if name == "recall":
+            nodes = brain.recall(
+                arguments.get("query", ""),
+                token_budget=arguments.get("token_budget", 2000),
+            )
+            result = "\n\n---\n\n".join(
+                f"[{node.id}] {node.text}" for node in nodes
+            )
+            return [types.TextContent(type="text", text=result)]
+
+        if name == "explain":
+            explanation = brain.explain(arguments.get("node_id", ""))
+            import json
+            return [types.TextContent(
+                type="text",
+                text=json.dumps(explanation, indent=2, default=str),
+            )]
+
+        if name == "consolidate":
+            report = brain.consolidate()
+            return [types.TextContent(
+                type="text",
+                text=f"Consolidation complete: {report.summaries_created} summaries, "
+                     f"{report.nodes_demoted} nodes demoted, "
+                     f"{report.edges_rewired} edges rewired.",
+            )]
+
+        raise ValueError(f"Unknown tool: {name}")
 
     return server
 

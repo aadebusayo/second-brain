@@ -9,12 +9,15 @@ from .graph import MemoryGraph
 
 def base_level(node, decay: float = 0.5) -> float:
     """
-    ACT-R style base-level activation: ln(sum(t_k ** -decay)).
-    Rewards both recency and frequency of access.
+    ACT-R style base-level activation.
+
+    Rewards recency and frequency of confirmed-relevant retrievals.
+    Floor of 1.0s prevents blow-up for sub-second recency.
     """
     if not getattr(node, "access_log", None):
         return 0.0
-    return float(sum((t ** -decay) for t in node.access_log))
+    now = __import__("time").time()
+    return float(sum(max((now - t), 1.0) ** -decay for t in node.access_log))
 
 
 def seed(query_embedding, graph: MemoryGraph, top_k: int = 8, floor: float = 0.2) -> Dict[str, float]:

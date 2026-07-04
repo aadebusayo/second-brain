@@ -16,3 +16,14 @@ class MemoryNode(SQLModel, table=True):
     schema_version: int = Field(default=1)
     provenance_json: str = "{}"
     updated_at: Optional[int] = Field(default=None)
+
+
+class MemoryEdge(SQLModel, table=True):
+    """SQL-backed persistence model for a graph edge."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_id: str = Field(index=True)
+    target_id: str = Field(index=True)
+    weight: float = Field(default=0.0)
+    relation_type: str = Field(default="")
+    updated_at: Optional[int] = Field(default=None)

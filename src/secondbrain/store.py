@@ -9,6 +9,7 @@ from .config import Settings
 from .embeddings.anthropic import AnthropicEmbeddingProvider
 from .embeddings.local import LocalEmbeddingProvider
 from .embeddings.openai import OpenAIEmbeddingProvider
+from .embeddings.sentence_transformers import SentenceTransformerProvider
 from .graph import MemoryGraph, Node
 from .storage import StorageBackend
 from .vectors.inmemory import InMemoryVectorStore
@@ -36,9 +37,59 @@ class MemoryStore:
         node.embedding = self.embedding_provider.embed(text)
         self.vector_store.add(node.id, node.embedding, {"text": text})
         self._nodes.append(node)
+
+        # Auto-wire: create edges to similar existing nodes via cosine similarity.
+        # This is what makes the graph self-assemble without manual wiring —
+        # each new node finds its natural neighbourhood on insertion.
+        self._auto_wire(node)
+
         self._persist_node(node)
         self.logger.info("remembered node", extra={"trace": build_trace("remember", node_id=node.id, text_length=len(text))})
         return node
+
+    def _auto_wire(self, node: Node) -> int:
+        """Create edges from *node* to existing nodes whose embeddings are
+        sufficiently similar. Returns the number of edges created."""
+        if not node.embedding:
+            return 0
+        threshold = self.settings.wire_threshold
+        new_embedding = np.asarray(node.embedding, dtype=float)
+        wired = 0
+        for existing in self._nodes:
+            if existing.id == node.id or not existing.embedding:
+                continue
+            sim = cosine_similarity(new_embedding, np.asarray(existing.embedding, dtype=float))
+            if sim >= threshold:
+                self.graph.add_edge(node.id, existing.id, weight=float(sim))
+                self._persist_edge(node.id, existing.id, float(sim))
+                wired += 1
+        if wired:
+            self.logger.debug(
+                "auto-wired edges",
+                extra={"trace": build_trace("auto-wire", node_id=node.id, edges_created=wired)},
+            )
+        return wired
+
+    def _persist_edge(self, source_id: str, target_id: str, weight: float, relation_type: str = "") -> None:
+        """Persist an edge to the storage backend."""
+        self.storage.save_edge(source_id, target_id, weight, relation_type=relation_type)
+
+    def _auto_wire_to_previous(self, node: Node, candidates: List[Node]) -> int:
+        """Wire *node* to a restricted set of *candidates* (used during bulk
+        re-wiring on cold start). Returns the number of edges created."""
+        if not node.embedding:
+            return 0
+        threshold = self.settings.wire_threshold
+        new_embedding = np.asarray(node.embedding, dtype=float)
+        wired = 0
+        for candidate in candidates:
+            if not candidate.embedding:
+                continue
+            sim = cosine_similarity(new_embedding, np.asarray(candidate.embedding, dtype=float))
+            if sim >= threshold:
+                self.graph.add_edge(node.id, candidate.id, weight=float(sim))
+                wired += 1
+        return wired
 
     def _build_embedding_provider(self):
         provider = self.settings.embedding_provider.lower()
@@ -46,6 +97,8 @@ class MemoryStore:
             return AnthropicEmbeddingProvider()
         if provider == "openai":
             return OpenAIEmbeddingProvider()
+        if provider == "sentence-transformers":
+            return SentenceTransformerProvider()
         return LocalEmbeddingProvider()
 
     def _build_vector_store(self):
@@ -80,6 +133,32 @@ class MemoryStore:
             node.metadata = item.get("metadata", {})
             self.vector_store.add(node.id, node.embedding, {"text": item["text"]})
             self._nodes.append(node)
+
+        # Auto-wire loaded nodes to each other so the graph is connected
+        # even after a cold start from persisted state.
+        if len(self._nodes) > 1:
+            wired = 0
+            # First, try to load persisted edges
+            persisted_edges = self.storage.load_edges()
+            if persisted_edges:
+                for edge in persisted_edges:
+                    self.graph.add_edge(
+                        edge["source_id"], edge["target_id"],
+                        weight=edge["weight"],
+                    )
+                self.logger.info(
+                    "loaded persisted edges",
+                    extra={"trace": build_trace("load-edges", count=len(persisted_edges))},
+                )
+            else:
+                # No persisted edges — auto-wire from scratch
+                for i, node in enumerate(self._nodes):
+                    wired += self._auto_wire_to_previous(node, self._nodes[:i])
+                if wired:
+                    self.logger.info(
+                        "rewired persisted graph",
+                        extra={"trace": build_trace("rewire", edges_created=wired)},
+                    )
 
     def _persist_node(self, node: Node) -> None:
         self.storage.save_node(node.id, node.text, node.embedding or [], node.metadata)

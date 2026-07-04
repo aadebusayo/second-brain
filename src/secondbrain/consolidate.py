@@ -82,12 +82,27 @@ def summarize_subgraph(
                 "concise paragraph that preserves all key information:\n\n"
                 + "\n---\n".join(texts)
             )
-            response = llm_client.messages.create(
-                model=getattr(llm_client, "model", "claude-sonnet-5"),
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            summary_text = response.content[0].text
+            # Anthropic-style
+            if hasattr(llm_client, "messages"):
+                try:
+                    response = llm_client.messages.create(
+                        model=getattr(llm_client, "model", "claude-sonnet-5"),
+                        max_tokens=512,
+                        messages=[{"role": "user", "content": prompt}],
+                    )
+                    summary_text = response.content[0].text
+                except NotImplementedError:
+                    raise  # re-raise so outer except catches it
+            # OpenAI / DeepSeek style
+            elif hasattr(llm_client, "chat"):
+                response = llm_client.chat.completions.create(
+                    model=getattr(llm_client, "model", "deepseek-chat"),
+                    max_tokens=512,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                summary_text = response.choices[0].message.content
+            else:
+                summary_text = " | ".join(texts)
         except Exception:
             summary_text = " | ".join(texts)
     else:
@@ -102,7 +117,15 @@ def summarize_subgraph(
         if node.embedding and len(node.embedding) > 0
     ]
     if embeddings:
-        avg_embedding = np.mean(np.stack(embeddings), axis=0).tolist()
+        # Pad all to the same dimension (embeddings may come from
+        # different providers with different vector sizes)
+        max_dim = max(e.size for e in embeddings)
+        padded = []
+        for e in embeddings:
+            if e.size < max_dim:
+                e = np.pad(e, (0, max_dim - e.size))
+            padded.append(e)
+        avg_embedding = np.mean(np.stack(padded), axis=0).tolist()
     else:
         avg_embedding = None
 

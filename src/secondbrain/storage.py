@@ -8,7 +8,7 @@ from typing import Optional
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from .config import Settings
-from .models import MemoryNode
+from .models import MemoryEdge, MemoryNode
 
 
 class StorageBackend:
@@ -92,3 +92,67 @@ class StorageBackend:
                     }
                 )
             return records
+
+    # ------------------------------------------------------------------
+    # Edge persistence
+    # ------------------------------------------------------------------
+
+    def save_edge(self, source_id: str, target_id: str, weight: float, relation_type: str = "") -> None:
+        """Persist a single edge (upsert)."""
+        timestamp = int(time.time())
+        with Session(self.engine) as session:
+            # Delete existing edge between these nodes (any direction)
+            stmt = select(MemoryEdge).where(
+                (MemoryEdge.source_id == source_id) & (MemoryEdge.target_id == target_id)
+            )
+            existing = session.exec(stmt).first()
+            if existing is None:
+                stmt = select(MemoryEdge).where(
+                    (MemoryEdge.source_id == target_id) & (MemoryEdge.target_id == source_id)
+                )
+                existing = session.exec(stmt).first()
+
+            if existing is not None:
+                existing.weight = weight
+                existing.relation_type = relation_type
+                existing.updated_at = timestamp
+            else:
+                record = MemoryEdge(
+                    source_id=source_id,
+                    target_id=target_id,
+                    weight=weight,
+                    relation_type=relation_type,
+                    updated_at=timestamp,
+                )
+                session.add(record)
+            session.commit()
+
+    def remove_edge(self, source_id: str, target_id: str) -> None:
+        """Remove a persisted edge."""
+        with Session(self.engine) as session:
+            for stmt in [
+                select(MemoryEdge).where(
+                    (MemoryEdge.source_id == source_id) & (MemoryEdge.target_id == target_id)
+                ),
+                select(MemoryEdge).where(
+                    (MemoryEdge.source_id == target_id) & (MemoryEdge.target_id == source_id)
+                ),
+            ]:
+                existing = session.exec(stmt).first()
+                if existing is not None:
+                    session.delete(existing)
+            session.commit()
+
+    def load_edges(self) -> list[dict]:
+        """Load all persisted edges."""
+        with Session(self.engine) as session:
+            rows = session.exec(select(MemoryEdge)).all()
+            return [
+                {
+                    "source_id": r.source_id,
+                    "target_id": r.target_id,
+                    "weight": r.weight,
+                    "relation_type": r.relation_type,
+                }
+                for r in rows
+            ]

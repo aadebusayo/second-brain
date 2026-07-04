@@ -38,19 +38,30 @@ class MemoryGraph:
             self._graph.remove_edge(source_id, target_id)
 
     def get_edge_weight(self, source_id: str, target_id: str) -> float:
+        if not self._graph.has_edge(source_id, target_id):
+            return 0.0
         return self._graph[source_id][target_id].get("weight", 0.0)
 
     def set_edge_weight(self, source_id: str, target_id: str, weight: float) -> None:
-        self._graph[source_id][target_id]["weight"] = float(weight)
+        if not self._graph.has_edge(source_id, target_id):
+            self._graph.add_edge(source_id, target_id, weight=float(weight))
+        else:
+            self._graph[source_id][target_id]["weight"] = float(weight)
 
     def get_node(self, node_id: str) -> Optional[Node]:
         data = self._graph.nodes.get(node_id)
         return data.get("node") if data else None
 
     def list_nodes(self) -> List[Node]:
-        return [data["node"] for _, data in self._graph.nodes(data=True)]
+        return [
+            data["node"]
+            for _, data in self._graph.nodes(data=True)
+            if "node" in data
+        ]
 
     def neighbors(self, node_id: str) -> List[str]:
+        if node_id not in self._graph:
+            return []
         return list(self._graph.neighbors(node_id))
 
     def adjacency(self) -> Dict[str, List[Tuple[str, float]]]:
