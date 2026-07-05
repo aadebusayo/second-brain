@@ -34,6 +34,7 @@ import numpy as np
 from secondbrain.activation import cosine_similarity, propagate, seed
 from secondbrain.api import SecondBrain
 from secondbrain.config import Settings
+from secondbrain.entity import EntityModel
 from secondbrain.graph import MemoryGraph, Node
 from secondbrain.store import MemoryStore
 from secondbrain.weights import decay_all
@@ -269,6 +270,10 @@ def build_document_corpus() -> Tuple[Dict[str, str], Dict[str, str], List[Node]]
     brain = SecondBrain.__new__(SecondBrain)
     brain.graph = graph
     brain.store = store
+    brain.entities = EntityModel(graph=graph, embedding_provider=embedder)
+    brain._llm_client = None
+    brain._nodes_since_consolidation = 0
+    brain._consolidate_every_n = 999999  # manual consolidation in benchmark
 
     # Override embedding provider with sentence-transformers
     brain.store.embedding_provider = embedder
